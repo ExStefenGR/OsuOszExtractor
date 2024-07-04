@@ -28,8 +28,11 @@ namespace OsuOszExtractor
 
             string[] oszFiles = Directory.GetFiles(songsDir).Where(f => Path.GetExtension(f) == ".osz").ToArray();
 
+            int maxDegreeOfParallelismOuterLoop = Environment.ProcessorCount;
+            int maxDegreeOfParallelismInnerLoop = (int)Math.Ceiling(Environment.ProcessorCount * 0.75);
+
             Dictionary<string, ZipArchive> openedArchives = new Dictionary<string, ZipArchive>();
-            _ = Parallel.ForEach(oszFiles, path =>
+            _ = Parallel.ForEach(oszFiles, new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelismOuterLoop }, path =>
             {
                 string fileName = Path.GetFileNameWithoutExtension(path);
                 try
@@ -49,7 +52,7 @@ namespace OsuOszExtractor
             });
 
             // Optimized Parallel Extraction using ZipFile
-            _ = Parallel.ForEach(openedArchives, kvp =>
+            _ = Parallel.ForEach(openedArchives, new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelismInnerLoop }, kvp =>
             {
                 string path = kvp.Key;
                 ZipArchive archive = kvp.Value;
@@ -123,7 +126,7 @@ namespace OsuOszExtractor
                     Console.WriteLine($"Warning: Error extracting {fileName}: {ex.Message}");
                     Console.ResetColor();
                 }
-                catch (Exception ex) // Catch any other unexpected exceptions. Not that the user will be able to catch them with how fast this is running, but anyway.
+                catch (Exception ex) // Catch any other unexpected exceptions. Not that the user will be able to see them with how fast this is running, but anyway.
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine($"Error extracting {fileName}: {ex.GetType().Name}: {ex.Message}");
